@@ -4,7 +4,6 @@
 #include <sstream>
 #include <iomanip>
 using namespace std;
-
 static const double EPS = 1e-9;
 
 struct Term {
