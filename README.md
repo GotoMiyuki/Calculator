@@ -59,43 +59,28 @@ Multi-Calculator 是一个基于 C++ 实现的多功能数学计算系统，支�
 💡 主菜单交互设计
 
 程序启动后显示：
-
+```
 Main Menu of Multi-Calculator
 1. Sparse Polynomial Calculator
 2. Expression Calculator
 enter 0 to quit
 ==============================
 enter your choice:
-
 输入相应编号进入不同模块。
-
-⸻
-
-🧱 程序结构
-
-Project/
-│
-├── main.cpp                // 主菜单与交互逻辑
-├── polynomial.h / .cpp     // 稀疏多项式定义与操作
-├── expression.h / .cpp     // 表达式求值模块
-│
-├── (可选) mainwindow.cpp   // GUI 逻辑 (Qt 版本)
-├── (可选) mainwindow.ui     // Qt Designer 布局
-└── README.md               // 项目说明文件
-
+```
 
 ⸻
 
 ⚙️ 编译与运行
 
 💻 命令行编译
-
+```
 g++ main.cpp polynomial.cpp expression.cpp -o MultiCalculator
-
+```
 ▶️ 运行程序
-
+```
 ./MultiCalculator
-
+```
 🧰 环境要求
 	•	C++17 或更高版本
 	•	支持 cmath, iostream, string
@@ -134,7 +119,3 @@ SwiftUI 版本：
 项目名称：Multi-Calculator
 版本：v1.0 (CLI)
 开发时间：2025
-
-⸻
-
-是否希望我帮你生成一个带有漂亮标题字体、颜色标记和徽章（如“Made with C++”、“Qt Supported”）的 GitHub 专用 README 风格版本？那样贴上去就像真正的开源项目一样专业。
