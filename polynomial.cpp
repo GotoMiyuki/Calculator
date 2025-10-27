@@ -1,9 +1,14 @@
-#include<iostream>
-#include<cmath>
+#include <iostream>
+#include <cmath>
+#include <string>
+#include <sstream>
+#include <iomanip>
 using namespace std;
 
+static const double EPS = 1e-9;
+
 struct Term {
-    int coef;
+    double coef;
     int exp;
     Term* next;
 };
@@ -32,6 +37,19 @@ class Polynomial {
             return newHead;
         }
 
+        static string formatNumber(double v) {
+            // format with fixed precision then trim trailing zeros
+            ostringstream oss;
+            oss << fixed << setprecision(6) << v;
+            string s = oss.str();
+            if (s.find('.') != string::npos) {
+                while (!s.empty() && s.back() == '0') s.pop_back();
+                if (!s.empty() && s.back() == '.') s.pop_back();
+            }
+            if (s == "-0") s = "0";
+            return s;
+        }
+
     public:
         Polynomial(): head(nullptr){}
 
@@ -41,7 +59,7 @@ class Polynomial {
                 Term* temp = current;
                 current = current->next;
                 delete temp;
-            }head = nullptr;
+            } head = nullptr;
         }
 
         Polynomial(const Polynomial& other) : head(nullptr) {
@@ -55,11 +73,13 @@ class Polynomial {
             return *this;
         }
 
-        Polynomial(Polynomial&& other){
+        // fixed move ctor/assign
+        Polynomial(Polynomial&& other) {
+            head = other.head;
             other.head = nullptr;
         }
 
-        Polynomial& operator=(Polynomial&& other){
+        Polynomial& operator=(Polynomial&& other) {
             if (this == &other) return *this;
             this->clear();
             head = other.head;
@@ -67,8 +87,8 @@ class Polynomial {
             return *this;
         }
 
-        void insertTerm(int coef, int exp) {
-            if (coef == 0) return; 
+        void insertTerm(double coef, int exp) {
+            if (fabs(coef) < EPS) return;
 
             Term* newTerm = new Term;
             newTerm->coef = coef;
@@ -95,7 +115,7 @@ class Polynomial {
 
             if(current && current->exp == exp){
                 current->coef += coef;
-                if(current->coef == 0){
+                if(fabs(current->coef) < EPS){
                     if(prev) prev->next = current->next;
                     else head = current->next;
                     delete current;
@@ -113,18 +133,24 @@ class Polynomial {
             cout<<"Input terms for the polynomial (enter '#' to stop):"<<endl;
             while(1){
                 string expInput;
-                int coef, exp;
+                double coef;
+                int exp;
                 cout<<"exponent: ";
-                cin>>expInput;
+                if (!(cin >> expInput)) return;
                 if(expInput == "#") return;
                 try{
                     exp = stoi(expInput);
-                }catch(invalid_argument&){
+                }catch(...){
                     cout<<"Invalid input. Please enter an integer exponent or '#' to stop."<<endl;
                     continue;
                 }
                 cout<<"coefficient of x^"<<exp<<": ";
-                cin>>coef;
+                if (!(cin >> coef)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Invalid coefficient. Try again." << endl;
+                    continue;
+                }
                 insertTerm(coef, exp);
             }
         }
@@ -138,20 +164,28 @@ class Polynomial {
             Term* current = head;
             bool first = true;
             while(current){
-                if(!first && current->coef > 0) cout << "+";
-                if(current->coef < 0) cout << "-";
-                
-                if(current->exp == 0){
-                    cout << abs(current->coef);
-                }else if(abs(current->coef) == 1 && current->exp == 1){
-                    cout << "x";
-                }else if(abs(current->coef) == 1){
-                    cout << "x^" << current->exp;
-                }else if(current->exp == 1){
-                    cout << abs(current->coef) << "x";
-                }else{
-                    cout << abs(current->coef) << "x^" << current->exp;
+                double c = current->coef;
+                int e = current->exp;
+
+                if(!first){
+                    cout << (c >= 0 ? "+" : "-");
+                } else {
+                    if (c < 0) cout << "-";
                 }
+
+                double absC = fabs(c);
+
+                if(e == 0){
+                    cout << formatNumber(absC);
+                } else if (fabs(absC - 1.0) < EPS) {
+                    // coefficient 1 or -1: omit number
+                    if (e == 1) cout << "x";
+                    else cout << "x^" << e;
+                } else {
+                    if (e == 1) cout << formatNumber(absC) << "x";
+                    else cout << formatNumber(absC) << "x^" << e;
+                }
+
                 first = false;
                 current = current->next;
             }
@@ -167,7 +201,7 @@ class Polynomial {
             }
         }
 
-        Polynomial operator+(const Polynomial& other){
+        Polynomial operator+(const Polynomial& other) const {
             Polynomial result;
             Term* p1 = this->head;
             Term* p2 = other.head;
@@ -179,7 +213,8 @@ class Polynomial {
                     result.insertTerm(p2->coef, p2->exp);
                     p2 = p2->next;
                 }else if(p1 && p2){
-                    if(p1->coef + p2->coef != 0) result.insertTerm(p1->coef + p2->coef, p1->exp);
+                    double sum = p1->coef + p2->coef;
+                    if(fabs(sum) >= EPS) result.insertTerm(sum, p1->exp);
                     p1 = p1->next;
                     p2 = p2->next;
                 }
@@ -187,7 +222,7 @@ class Polynomial {
             return result;
         }
         
-        Polynomial operator-(const Polynomial& other){
+        Polynomial operator-(const Polynomial& other) const {
             Polynomial result;
             Term* p1 = this->head;
             Term* p2 = other.head;
@@ -199,7 +234,8 @@ class Polynomial {
                     result.insertTerm(-p2->coef, p2->exp);
                     p2 = p2->next;
                 }else if(p1 && p2){
-                    if(p1->coef != p2->coef) result.insertTerm(p1->coef - p2->coef, p1->exp);
+                    double diff = p1->coef - p2->coef;
+                    if(fabs(diff) >= EPS) result.insertTerm(diff, p1->exp);
                     p1 = p1->next;
                     p2 = p2->next;
                 }
@@ -207,7 +243,7 @@ class Polynomial {
             return result;
         }
 
-        Polynomial operator*(const Polynomial& other){
+        Polynomial operator*(const Polynomial& other) const {
             Polynomial result;
             Term* p1 = this->head;
             while(p1){
@@ -221,23 +257,26 @@ class Polynomial {
             return result;
         }
 
-        Polynomial Derivative() const{
+        Polynomial Derivative() const {
             Polynomial result;
             Term* p1 = this->head;
             while(p1){
                 if(p1->exp != 0){
                     result.insertTerm(p1->coef * p1->exp, p1->exp - 1);
-                }p1 = p1->next;
-            }return result;
+                }
+                p1 = p1->next;
+            }
+            return result;
         }
 
-        double evaluate(double x) const{
+        double evaluate(double x) const {
             Term* p1 = this->head;
             double sum = 0.0;
             while(p1){
                 sum += pow(x, p1->exp) * p1->coef;
                 p1 = p1->next;
-            }return sum;
+            }
+            return sum;
         }
 
         string toHTML() const{
@@ -250,22 +289,30 @@ class Polynomial {
             bool first = true;
             
             while(current){
-                if(!first && current->coef > 0) html += "+";
-                if(current->coef < 0) html += "-";
-                if(current->exp == 0){
-                    html += to_string(abs(current->coef));
-                }else if(current->coef == 1 && current->exp == 1){
-                    html += "x";
-                }else if(current->coef == 1){
-                    html += "x<sup>" + to_string(current->exp) + "</sup>";
-                }else if(current->exp == 1){
-                    html += to_string(abs(current->coef)) + "x";
-                }else{
-                    html += to_string(abs(current->coef)) + "x<sup>" + to_string(current->exp) + "</sup>";
+                double c = current->coef;
+                int e = current->exp;
+                if(!first && c > 0) html += "+";
+                if(c < 0) html += "-";
+
+                double absC = fabs(c);
+
+                if(e == 0){
+                    html += formatNumber(absC);
+                } else if (fabs(absC - 1.0) < EPS) {
+                    if (e == 1) html += "x";
+                    else html += "x<sup>" + to_string(e) + "</sup>";
+                } else if(e == 1){
+                    html += formatNumber(absC) + "x";
+                } else {
+                    html += formatNumber(absC) + "x<sup>" + to_string(e) + "</sup>";
                 }
+
                 first = false;
                 current = current->next;
             }
             return html;
         }
+
+        // optional helper to check emptiness
+        bool isEmpty() const { return head == nullptr; }
 };
